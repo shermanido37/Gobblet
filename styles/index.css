@@ -1,0 +1,147 @@
+body {
+  font-family: Arial, sans-serif;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  background-color: #f0f0f0;
+}
+header {
+  display: flex;
+  flex-direction: row;
+  justify-content: center;
+  text-align: center;
+  padding: 20px;
+  background-color: #333;
+  color: #fff;
+  /*display: flex;
+  flex-direction: row;
+  justify-content: center;
+  text-align: center;
+  padding: 20px;
+  background-color: #333;
+  color: #fff;
+  width: 100%;
+  right: 0%;*/
+}
+
+/*Game utility: turn indicator etc.*/
+#game-utility {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  justify-content: center;
+  margin: 20px;
+}
+
+#turn-indicator {
+  font-size: 20pt;
+  font-weight: bold;
+}
+
+#turn-indicator.player1turn #indicator2 {
+  display: none;
+}
+
+#turn-indicator.player2turn #indicator1 {
+  display: none;
+}
+
+/*Game container: board, player pieces etc.*/
+#game-container {
+  display: flex;
+  flex-direction: row;
+  align-items: flex-start;
+  justify-content: center;
+  gap: 20px;
+}
+
+.player-container {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+.board,
+.player-section {
+  display: grid;
+  gap: 5px;
+}
+.board {
+  grid-template-columns: repeat(4, 70px);
+  grid-template-rows: repeat(4, 70px);
+  background-color: #eee;
+  border: 2px solid #333;
+  margin: 10px 30px;
+  padding: 20px;
+}
+#player-container {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  margin: 5px;
+}
+.player-section {
+  grid-template-columns: repeat(4, 60px);
+  grid-template-rows: repeat(3, 60px);
+  background-color: #f0f0f0;
+  border: 2px solid #333;
+  padding: 10px;
+}
+.cell {
+  background-color: #fff;
+  border: 1px solid #555;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 16px;
+}
+
+/*player pieces*/
+.piece {
+  border-radius: 50px;
+  position: absolute;
+}
+
+.player0 {
+  background-color: #000000;
+}
+
+.player1 {
+  background-color: #ffffff;
+  border: 1px solid #000000;
+}
+
+.size0 {
+  width: 10px;
+  height: 10px;
+}
+
+.size1 {
+  width: 25px;
+  height: 25px;
+}
+
+.size2 {
+  width: 40px;
+  height: 40px;
+}
+
+.size3 {
+  width: 55px;
+  height: 55px;
+}
+
+.selected {
+  border: 5px solid gold;
+}
+
+/*miscellaneous*/
+footer {
+  text-align: center;
+  margin-top: 20px;
+  font-size: 14px;
+  color: #555;
+}
