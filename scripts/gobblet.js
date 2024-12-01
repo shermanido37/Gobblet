@@ -1,7 +1,8 @@
 //  Board:
 //  Variable to access the entirety of the board.
 //  Treated as a 2d array, all elements are Stacks.
-let board;
+let gameBoard;
+let playerBoards;
 const boardRows = 4;
 const boardColumns = 4;
 
@@ -10,15 +11,19 @@ const boardColumns = 4;
 //  It is an array, with each element of an array representing a player.
 //  Each element contains an array of game pieces.
 let playerPieces;
+
 const NumOfPlayers = 2;
-const playerColumns = 4;
-const playerRows = 3;
+const playerColumns = 3;
+const playerRows = 4;
+const WHITE = 100;
+const BLACK = 101;
+const FAILURE = -1; //  signifies error or failure
 
 //  turn indicator variable. If true, it's player 1's turn.
 let isPlayer1;
 
-//  selected element variable. holds the previously selected player piece, if any
-let prevSelectedCell;
+//  selected element variable. holds the already selected player piece, if any
+let alreadySelectedCell;
 
 //  here will be stored win cases for players
 let winner = null;
@@ -49,52 +54,63 @@ function initializePage() {
 function initializeGame() {
   //    initialize variables
   isPlayer1 = true;
-  prevSelectedCell = null;
+  alreadySelectedCell = null;
   winner = [];
+
+  //    initialize game board
+  gameBoard = new Board(boardColumns, boardRows, true, FAILURE);
+
   //    initialize player sections
+  playerBoards = [
+    new Board(playerColumns, playerRows, false, WHITE),
+    new Board(playerColumns, playerRows, false, BLACK),
+  ];
   for (let playerIndex = 0; playerIndex < NumOfPlayers; playerIndex++) {
     //  loop resetting pieces for each player
-    for (let i = 0; i < playerColumns; i++) {
-      for (let j = 0; j < playerRows; j++) {
+    for (let i = 0; i < playerRows; i++) {
+      for (let j = 0; j < playerColumns; j++) {
         const pieceElem = document.createElement("div");
         pieceElem.setAttribute(
           "id",
           "piece" +
-            (i + j * playerColumns + playerIndex * playerColumns * playerRows)
+            (j + i * playerColumns + playerIndex * playerColumns * playerRows)
         );
         pieceElem.classList.add("piece"); //  adding first cosmetic class to apply piece appearance
         //  saving owning player for each game piece
-        pieceElem.classList.add("player" + playerIndex); //  adding a cosmetic class to the piece classifying it as the current player's
-        pieceElem.dataset.player = playerIndex;
+        pieceElem.classList.add("player" + (playerIndex + WHITE)); //  adding a cosmetic class to the piece classifying it as the current player's. WHITE is the beginning of the player index
         //  controlling game piece size
-        pieceElem.classList.add("size" + i); //  adding a cosmetic class to the piece classifying it as the size, according to column
-        pieceElem.style.zIndex = i; //  higher size means higher display priority. we will also use this for size comparisons
+        pieceElem.classList.add("size" + (playerRows - (i + 1))); //  adding a cosmetic class to the piece classifying it as the size, according to column
+        pieceElem.style.zIndex = playerRows - (i + 1); //  higher size means higher display priority. we will also use this for size comparisons
 
         //  adding the new element to the appropriate cell for the appropriate player
         const cellName =
-          "p" + (playerIndex + 1) + "-cell-" + (i + j * playerColumns + 1);
+          "p" + (playerIndex + 1) + "-cell-" + (i * playerColumns + j + 1);
         const elem = document.getElementById(cellName);
         elem.appendChild(pieceElem);
-        elem.parentElement = pieceElem;
+        pieceElem.parentElement = elem;
       }
     }
   }
+  console.log(gameBoard.toString());
+  console.log("---");
+  console.log(playerBoards[0].toString());
+  console.log("---");
+  console.log(playerBoards[1].toString());
 }
 
 function trySelect(event) {
+  //  if game is over, don't select
   if (winner.length > 1) return;
   let tempCell = event.target;
   if (tempCell.classList.contains("piece")) {
     tempCell = tempCell.parentElement;
   }
-  const targetCell = tempCell;
-  const activePlayer = 0 + (isPlayer1 ? 0 : 1);
+
+  const activePlayer = isPlayer1 ? WHITE : BLACK; //  the player currently playing
+  const targetCell = tempCell; //  the cell the player just selected
   const targetPiece = targetCell.lastElementChild; //  biggest piece in the cell
-
-  console.log(targetCell);
-
   //    first, if no existing selection
-  if (prevSelectedCell === null) {
+  if (alreadySelectedCell === null) {
     //  if tried to select their piece, just select it
     if (
       targetPiece != null &&
@@ -109,217 +125,89 @@ function trySelect(event) {
     }
   } else {
     //  if it's the same one again, just reset selection
-    if (prevSelectedCell.id === targetCell.id) {
+    if (alreadySelectedCell.id === targetCell.id) {
       resetSelection();
       return;
     }
     //  here, we know we have an existing selection, and we're selecting a target.
-    //  first, make sure target is on the board
-    if (targetCell.parentElement.id === "game-board") {
-      //  if target is empty, just move there
-      if (targetCell.childElementCount === 0) {
-        console.log("target empty + already selected");
-        movePiece(prevSelectedCell, targetCell);
-        return;
-      }
-      //  now we need to figure out if it's a valid target.
-      //  if target cell has children, check the topmost one
-      if (targetCell.childElementCount > 0) {
-        //    if that child is of equal or higher size to the current selected piece, stop execution
-        if (
-          prevSelectedCell.lastElementChild.style.zIndex <=
-          targetPiece.style.zIndex
-        ) {
-          console.log("too big");
-          return;
-        } else {
-          console.log("tested z index");
-          movePiece(prevSelectedCell, targetCell);
-        }
-      }
-    }
+
+    //  switch turns
+    isPlayer1 = !isPlayer1;
+    let turnIndicator = document.getElementById("turn-indicator");
+    turnIndicator.classList.toggle("player1turn");
+    turnIndicator.classList.toggle("player2turn");
   }
 }
 
 /* select the given piece and display it as such. */
 function selectCell(cell) {
-  if (prevSelectedCell != null && prevSelectedCell === cell) {
+  if (alreadySelectedCell != null && alreadySelectedCell === cell) {
     resetSelection();
     return;
   }
 
   const pieceToSelect = cell.lastElementChild;
   pieceToSelect.classList.toggle("selected");
-  prevSelectedCell = cell;
+  alreadySelectedCell = cell;
+  if (!alreadySelectedCell) return;
+  console.log(
+    "selected " +
+      alreadySelectedCell.id.substr(8) +
+      " " +
+      pieceToSelect.id.substr(5)
+  );
+  const temp = pieceIdToXY(
+    isPlayer1 ? WHITE : BLACK,
+    parseInt(pieceToSelect.id.substr(5))
+  );
+  console.log("converted: " + temp);
+
+  const temp4 = playerBoards[0].getCoordinates(temp);
+  console.log("coordinates in database: " + temp4);
+
+  const temp2 = parseInt(alreadySelectedCell.id.substr(8));
+  console.log(temp2);
+
+  const temp3 = cellIdToXY(isPlayer1 ? WHITE : BLACK, temp2);
+  console.log(temp3);
 }
 
 /* reset the currently selected cell's tag, then set the currently selected cell to null */
 function resetSelection() {
   console.log("resetting");
-  if (prevSelectedCell === null || prevSelectedCell.childElementCount <= 0)
+  if (
+    alreadySelectedCell === null ||
+    alreadySelectedCell.childElementCount <= 0
+  )
     return;
-  const piece = prevSelectedCell.lastElementChild;
+  const piece = alreadySelectedCell.lastElementChild;
   piece.classList.toggle("selected");
-  prevSelectedCell = null;
+  alreadySelectedCell = null;
 }
 
-async function movePiece(oldCell, newCell) {
-  console.log("moving");
-
-  //    reset selection
-  resetSelection();
-
-  //    move piece
-  await movePieceAsync(oldCell, newCell);
-
-  //    check win conditions
-  checkWinConditions();
-
-  //    switch turns
-  isPlayer1 = !isPlayer1;
-  let turnIndicator = document.getElementById("turn-indicator");
-  turnIndicator.classList.toggle("player1turn");
-  turnIndicator.classList.toggle("player2turn");
-}
-
-function checkWinConditions() {
-  let rowPlayer;
-  let columnPlayer;
-  let cellNum;
-  let tempCell;
-  // checking rows
-  for (let i = 0; i < boardColumns; i++) {
-    rowPlayer = -2;
-    for (let j = 0; j < boardRows && rowPlayer != -1; j++) {
-      cellNum = 1 + i * boardColumns + j;
-      tempCell = document.getElementById("cell-" + cellNum);
-      if (j === 0) {
-        if (tempCell.childElementCount <= 0) {
-          rowPlayer = -1;
-          console.log("bad row " + i);
-        } else {
-          rowPlayer = getPieceOwnerNum(tempCell);
-        }
-      } else {
-        if (
-          tempCell.childElementCount <= 0 ||
-          getPieceOwnerNum(tempCell) != rowPlayer
-        ) {
-          rowPlayer = -1;
-          console.log("bad column " + i);
-        } else {
-          if (j === boardRows - 1 && rowPlayer != -1) {
-            winner.push(rowPlayer);
-          }
-        }
-      }
-    }
+//  return an array with the coordinates of the piece on the given board, according to its id
+function pieceIdToXY(boardOwner, id) {
+  console.log("searching " + boardOwner + " for " + id);
+  let boardToSearch;
+  switch (boardOwner) {
+    case WHITE:
+      boardToSearch = playerBoards[0];
+      break;
+    case BLACK:
+      boardToSearch = playerBoards[1];
+      break;
+    case FAILURE:
+    default:
+      boardToSearch = gameBoard;
   }
-
-  // checking columns
-  for (let i = 0; i < boardRows; i++) {
-    columnPlayer = -2;
-    for (let j = 0; j < boardColumns && columnPlayer != -1; j++) {
-      cellNum = 1 + i + j * boardColumns;
-      tempCell = document.getElementById("cell-" + cellNum);
-      if (j === 0) {
-        if (tempCell.childElementCount <= 0) {
-          columnPlayer = -1;
-        } else {
-          columnPlayer = getPieceOwnerNum(tempCell);
-        }
-      } else {
-        if (
-          tempCell.childElementCount <= 0 ||
-          getPieceOwnerNum(tempCell) != columnPlayer
-        ) {
-          columnPlayer = -1;
-          console.log("bad column " + i);
-        } else {
-          if (j === boardRows - 1 && columnPlayer != -1) {
-            winner.push(columnPlayer);
-          }
-        }
-      }
-    }
-  }
-  let diagonalplayer = -2;
-  let diagonal2player = -2;
-  // checking both diagonals at once
-  for (
-    let i = 0;
-    i < boardColumns && !(diagonalplayer === -1 && diagonal2player === -1);
-    i++
-  ) {
-    //  checking diagonal 1 \
-    cellNum = i * (boardColumns + 1) + 1;
-    tempCell = document.getElementById("cell-" + cellNum);
-    if (i === 0 && tempCell.childElementCount > 0) {
-      diagonalplayer = getPieceOwnerNum(tempCell);
-    } else {
-      if (
-        tempCell.childElementCount === 0 ||
-        (tempCell.childElementCount > 0 &&
-          getPieceOwnerNum(tempCell) != diagonalplayer)
-      ) {
-        diagonalplayer = -1;
-      } else {
-        if (i === boardRows - 1) {
-          if (diagonalplayer != -1) {
-            winner.push(diagonalplayer);
-          }
-        }
-      }
-    }
-
-    //  checking diagonal 2 /
-    cellNum = boardColumns * boardRows - (i + 1) * 3;
-    tempCell = document.getElementById("cell-" + cellNum);
-    console.log(tempCell);
-    if (i === 0 && tempCell.childElementCount > 0) {
-      diagonal2player = getPieceOwnerNum(tempCell);
-    } else {
-      if (
-        tempCell.childElementCount === 0 ||
-        (tempCell.childElementCount > 0 &&
-          getPieceOwnerNum(tempCell) != diagonal2player)
-      ) {
-        diagonal2player = -1;
-      } else {
-        if (i === boardRows - 1) {
-          if (diagonal2player != -1) {
-            winner.push(diagonal2player);
-          }
-        }
-      }
-    }
-
-    console.log(winner);
-    if (winner.length > 0) {
-      if (winner.length > 1) {
-        let first = winner[0];
-        for (i = 0; i < winner.length; i++) {
-          console.log(i + " " + winner[i]);
-          if (winner[i] != first) {
-            alert("draw");
-            return;
-          }
-        }
-      } else {
-        alert("Player " + (parseInt(winner[0]) + 1) + " is the winner");
-        return;
-      }
-    }
-  }
+  console.log(boardToSearch.getCoordinates(id));
+  return boardToSearch.getCoordinates(id);
 }
 
-async function movePieceAsync(oldCell, newCell) {
-  let piece = oldCell.lastElementChild;
-  await oldCell.removeChild(piece);
-  await newCell.appendChild(piece);
-}
-
-function getPieceOwnerNum(cell) {
-  let piece = cell.lastElementChild;
-  return piece.dataset.player;
+//  return an array with the coordinates of the cell on the given board, according to its id
+function cellIdToXY(boardOwner, id) {
+  const fixedID = id - 1;
+  if (boardOwner === FAILURE)
+    return [Math.floor(fixedID / boardColumns), fixedID % boardRows]; //  if cell is on game board and not a player's board
+  return [Math.floor(fixedID / playerColumns), fixedID % playerColumns];
 }
