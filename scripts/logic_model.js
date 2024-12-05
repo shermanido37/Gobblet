@@ -145,13 +145,13 @@ class Board {
   checkVictory(startX, startY, hInc, vInc) {
     let winningPlayer;
     const firstStack = this.board[startX][startY];
-    if (firstStack.isEmpty) return FAILURE;
+    if (firstStack.isEmpty()) return FAILURE;
     winningPlayer = firstStack.peek().player;
-    for (i = 1; i < this.board.length; i++) {
+    for (let i = 1; i < this.board.length; i++) {
       //    check according to position in loop and according to starting and increment parameters
       let currentStack = this.board[startX + i * hInc][startY + i * vInc];
       //    if no victory, stop checking
-      if (currentStack.isEmpty) return FAILURE;
+      if (currentStack.isEmpty()) return FAILURE;
       if (currentStack.peek().player != winningPlayer) return FAILURE;
     }
     //  we've checked the entire thing and it's all the same player. they are the victor

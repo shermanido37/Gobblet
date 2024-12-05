@@ -19,10 +19,16 @@
       </header>
       <div id="game-utility">
         <div id="turn-indicator" class="player1turn">
-          <b>Player</b>
-          <b id="indicator1">1</b>
-          <b id="indicator2">2</b>
-          <b>'s turn</b>
+          <span id="player">
+            <b>Player</b>
+            <b id="indicator1">1</b>
+            <b id="indicator2">2</b>
+          </span>
+          <b id="turn">'s turn</b>
+          <span id="gameOver" class="disabled">
+            <b id="winner" class="disabled"> is the winner!</b>
+            <b id="draw" class="disabled">The game is a draw.</b>
+          </span>
         </div>
       </div>
       <div id="game-container">

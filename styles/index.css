@@ -49,6 +49,10 @@ header {
   display: none;
 }
 
+.disabled {
+  display: none;
+}
+
 /*Game container: board, player pieces etc.*/
 #game-container {
   display: flex;
@@ -136,6 +140,10 @@ header {
 
 .selected {
   border: 5px solid gold;
+}
+
+.winning {
+  border: 5px solid green;
 }
 
 /*miscellaneous*/

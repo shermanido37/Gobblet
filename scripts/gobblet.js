@@ -146,7 +146,7 @@ function trySelect(event) {
 
     if (selectedPieceBoard.id === "game-board") {
       selectedPieceXY = pieceIdToXY(FAILURE, selectedPieceID);
-      selectedPieceSource = gameBoard.board;
+      selectedPieceSource = gameBoard;
     } else {
       selectedPieceXY = pieceIdToXY(getActivePlayer(), selectedPieceID);
       selectedPieceSource = playerBoards[getActivePlayer() - WHITE];
@@ -163,21 +163,8 @@ function trySelect(event) {
 
     /*if the move is legal, begin moving process*/
     if (isLegal) {
-      /*if both pieces are on the game board, simply move within the board*/
-      if (selectedPieceSource.id === "game-board") {
-        gameBoard.move(selectedPieceXY, targetCoordinates);
-      } else {
-        /*otherwise, withdraw from player board to the game board*/
-        const gamePieceToMove = selectedPieceSource.withdraw(
-          selectedPieceXY[0],
-          selectedPieceXY[1]
-        );
-        gameBoard.moveNew(
-          targetCoordinates[0],
-          targetCoordinates[1],
-          gamePieceToMove
-        );
-      }
+      /*moving the piece*/
+      movePiece(selectedPieceSource, selectedPieceXY, targetCoordinates);
 
       /*update interface*/
       alreadySelectedCell.removeChild(selectedPieceElem);
@@ -186,29 +173,36 @@ function trySelect(event) {
 
       /*check victory conditions*/
       const winner = isVictory();
-      console.log(isGameOver);
-      if (winner != null && winner.size() > 0) {
+      console.log(winner);
+      if (winner === null) throw Exception("invalid winner result");
+      if (winner != null && winner.length > 0) {
+        /*game is over*/
         isGameOver = true;
-        let winningPlayer = winner[0];
+        let winningPlayer = winner[0][2];
+
         /*checking for draw*/
-        for (let i = 1; i < winner.size(); i++) {
+        for (let i = 1; i < winner.length; i++) {
           if (winner[i] != winningPlayer) {
             winningPlayer = FAILURE;
             break;
           }
         }
+
+        //  update game graphics on winner or draw
         let winningMessage;
         if (winningPlayer === FAILURE) winningMessage = "The game is a draw.";
         else
           winningMessage =
             "Player " + (winningPlayer - WHITE + 1) + " is the winner!";
         alert(winningMessage);
+        displayVictory(winner);
+        return;
       }
 
+      //  there are no winners. game can resume.
       //  switch turns
-
       isPlayer1 = !isPlayer1;
-      let turnIndicator = document.getElementById("turn-indicator");
+      const turnIndicator = document.getElementById("turn-indicator");
       turnIndicator.classList.toggle("player1turn");
       turnIndicator.classList.toggle("player2turn");
     }
@@ -239,10 +233,93 @@ function resetSelection(cell) {
   alreadySelectedCell = null;
 }
 
+/*function for moving a piece between cells*/
+function movePiece(selectedPieceSource, selectedPieceXY, targetCoordinates) {
+  /*if both pieces are on the game board, simply move within the board*/
+  if (selectedPieceSource.id === "game-board") {
+    gameBoard.move(selectedPieceXY, targetCoordinates);
+  } else {
+    /*otherwise, withdraw from player board to the game board*/
+    const gamePieceToMove = selectedPieceSource.withdraw(
+      selectedPieceXY[0],
+      selectedPieceXY[1]
+    );
+    gameBoard.moveNew(
+      targetCoordinates[0],
+      targetCoordinates[1],
+      gamePieceToMove
+    );
+  }
+}
+
 /*check the conditions in which the game ends.*/
 /*if a player won, returns true. else returns false.*/
 function isVictory() {
-  return "Victory conditions not implemented yet";
+  let winners = [];
+  for (let i = 0; i < boardColumns; i++) {
+    const isRowWinner = gameBoard.checkVictoryRow(i);
+    if (isRowWinner != FAILURE)
+      winners[winners.length] = ["column", i, isRowWinner];
+    const isColumnWinner = gameBoard.checkVictoryColumn(i);
+    if (isColumnWinner != FAILURE)
+      winners[winners.length] = ["row", i, isColumnWinner];
+  }
+  const isDiagonal1Winner = gameBoard.checkDiagonal1();
+  if (isDiagonal1Winner != FAILURE)
+    winners[winners.length] = ["diagonal", 1, isDiagonal1Winner];
+  const isDiagonal2Winner = gameBoard.checkDiagonal2();
+  if (isDiagonal2Winner != FAILURE)
+    winners[winners.length] = ["diagonal", 2, isDiagonal2Winner];
+  return winners;
+}
+
+//  display victory
+function displayVictory(winner) {
+  //  highlight all winning moves
+  for (let i = 0; i < winner.length; i++) {
+    if (winner[i][0] === "row") {
+      for (let j = 0; j < boardColumns; j++) {
+        const cellName = "cell-" + (winner[i][1] * boardRows + j + 1);
+        const cell = document.getElementById(cellName);
+        cell.lastElementChild.classList.add("winning");
+      }
+    } else if (winner[i][0] === "column") {
+      for (let j = 0; j < boardRows; j++) {
+        const cellName = "cell-" + (winner[i][1] * boardRows + i + 1);
+        const cell = document.getElementById(cellName);
+        cell.lastElementChild.classList.add("winning");
+      }
+    }
+  }
+
+  let toggleElem;
+  //  if the game is a draw
+  if (winner.length > 1) {
+    //  enable draw graphic element
+    toggleElem = document.getElementById("player");
+    toggleElem.classList.toggle("disabled");
+    toggleElem = document.getElementById("draw");
+  } else {
+    //  if the winning player didn't win on their turn, switch graphic indicator
+    if (
+      (isPlayer1 && winner[0][2] != WHITE) ||
+      (!isPlayer1 && winner[0][2] != BLACK)
+    ) {
+      const playerNameDisplay = document.getElementById("turn-indicator");
+      playerNameDisplay.classList.toggle("player1turn");
+      playerNameDisplay.classList.toggle("player2turn");
+    }
+    //  enable winner graphic element
+
+    toggleElem = document.getElementById("winner");
+  }
+  toggleElem.classList.toggle("disabled");
+
+  const turnIndicator = document.getElementById("turn");
+  turnIndicator.classList.toggle("disabled");
+
+  const GameOverElem = document.getElementById("gameOver");
+  GameOverElem.classList.toggle("disabled");
 }
 
 //  return an array with the coordinates of the piece on the given board, according to its id
