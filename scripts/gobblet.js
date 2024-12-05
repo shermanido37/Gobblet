@@ -25,8 +25,8 @@ let isPlayer1;
 //  selected element variable. holds the already selected player piece, if any
 let alreadySelectedCell;
 
-//  here will be stored win cases for players
-let winner = null;
+//  here we save the winning state
+let isGameOver;
 
 //  function to initialize page
 function initializePage() {
@@ -55,7 +55,7 @@ function initializeGame() {
   //    initialize variables
   isPlayer1 = true;
   alreadySelectedCell = null;
-  winner = [];
+  isGameOver = false;
 
   //    initialize game board
   gameBoard = new Board(boardColumns, boardRows, true, FAILURE);
@@ -91,16 +91,11 @@ function initializeGame() {
       }
     }
   }
-  console.log(gameBoard.toString());
-  console.log("---");
-  console.log(playerBoards[0].toString());
-  console.log("---");
-  console.log(playerBoards[1].toString());
 }
 
 function trySelect(event) {
   //  if game is over, don't select
-  if (winner.length > 1) return;
+  if (isGameOver) return;
   let tempCell = event.target;
   if (tempCell.classList.contains("piece")) {
     tempCell = tempCell.parentElement;
@@ -117,32 +112,113 @@ function trySelect(event) {
       targetPiece.classList.contains("player" + activePlayer)
     ) {
       selectCell(targetCell);
-      return;
     } else {
       //  here, no existing selection, but tried to select opponent's or no piece. quit execution
       console.log("you dun goofed");
-      return;
     }
   } else {
-    //  if it's the same one again, just reset selection
-    if (alreadySelectedCell.id === targetCell.id) {
-      resetSelection();
-      return;
-    }
     //  here, we know we have an existing selection, and we're selecting a target.
 
-    //  switch turns
-    isPlayer1 = !isPlayer1;
-    let turnIndicator = document.getElementById("turn-indicator");
-    turnIndicator.classList.toggle("player1turn");
-    turnIndicator.classList.toggle("player2turn");
+    //  if it's the same one again, just reset selection
+    if (alreadySelectedCell.id === targetCell.id) {
+      resetSelection(targetCell);
+      return;
+    }
+
+    //  if selecting something not on the game board with an existing, non-same selection, do nothing and quit execution
+    if (targetCell.parentElement.id != "game-board") {
+      console.log("selected something wrong");
+      return;
+    }
+
+    //  now we know thing was selected on the game board
+    //  get coordinates of the selected piece on the board
+    const targetCellID = parseInt(targetCell.id.substr(5));
+    const targetCoordinates = cellIdToXY(FAILURE, targetCellID);
+
+    //  get more data about the piece that's already selected
+    const selectedPieceElem = alreadySelectedCell.lastElementChild;
+    const selectedPieceID = parseInt(selectedPieceElem.id.substr(5));
+    const selectedPieceBoard = alreadySelectedCell.parentElement;
+
+    let selectedPieceXY;
+    let selectedPieceSource;
+
+    if (selectedPieceBoard.id === "game-board") {
+      selectedPieceXY = pieceIdToXY(FAILURE, selectedPieceID);
+      selectedPieceSource = gameBoard.board;
+    } else {
+      selectedPieceXY = pieceIdToXY(getActivePlayer(), selectedPieceID);
+      selectedPieceSource = playerBoards[getActivePlayer() - WHITE];
+    }
+
+    const selectedPieceLogic =
+      selectedPieceSource.board[selectedPieceXY[0]][selectedPieceXY[1]].peek();
+
+    //  check if legal move
+    const isLegal = gameBoard.isLegalMove(
+      selectedPieceLogic,
+      targetCoordinates
+    );
+
+    /*if the move is legal, begin moving process*/
+    if (isLegal) {
+      /*if both pieces are on the game board, simply move within the board*/
+      if (selectedPieceSource.id === "game-board") {
+        gameBoard.move(selectedPieceXY, targetCoordinates);
+      } else {
+        /*otherwise, withdraw from player board to the game board*/
+        const gamePieceToMove = selectedPieceSource.withdraw(
+          selectedPieceXY[0],
+          selectedPieceXY[1]
+        );
+        gameBoard.moveNew(
+          targetCoordinates[0],
+          targetCoordinates[1],
+          gamePieceToMove
+        );
+      }
+
+      /*update interface*/
+      alreadySelectedCell.removeChild(selectedPieceElem);
+      targetCell.appendChild(selectedPieceElem);
+      resetSelection(targetCell);
+
+      /*check victory conditions*/
+      const winner = isVictory();
+      console.log(isGameOver);
+      if (winner != null && winner.size() > 0) {
+        isGameOver = true;
+        let winningPlayer = winner[0];
+        /*checking for draw*/
+        for (let i = 1; i < winner.size(); i++) {
+          if (winner[i] != winningPlayer) {
+            winningPlayer = FAILURE;
+            break;
+          }
+        }
+        let winningMessage;
+        if (winningPlayer === FAILURE) winningMessage = "The game is a draw.";
+        else
+          winningMessage =
+            "Player " + (winningPlayer - WHITE + 1) + " is the winner!";
+        alert(winningMessage);
+      }
+
+      //  switch turns
+
+      isPlayer1 = !isPlayer1;
+      let turnIndicator = document.getElementById("turn-indicator");
+      turnIndicator.classList.toggle("player1turn");
+      turnIndicator.classList.toggle("player2turn");
+    }
   }
 }
 
 /* select the given piece and display it as such. */
 function selectCell(cell) {
   if (alreadySelectedCell != null && alreadySelectedCell === cell) {
-    resetSelection();
+    resetSelection(cell);
     return;
   }
 
@@ -150,39 +226,23 @@ function selectCell(cell) {
   pieceToSelect.classList.toggle("selected");
   alreadySelectedCell = cell;
   if (!alreadySelectedCell) return;
-  console.log(
-    "selected " +
-      alreadySelectedCell.id.substr(8) +
-      " " +
-      pieceToSelect.id.substr(5)
-  );
-  const temp = pieceIdToXY(
-    isPlayer1 ? WHITE : BLACK,
-    parseInt(pieceToSelect.id.substr(5))
-  );
-  console.log("converted: " + temp);
 
-  const temp4 = playerBoards[0].getCoordinates(temp);
-  console.log("coordinates in database: " + temp4);
-
-  const temp2 = parseInt(alreadySelectedCell.id.substr(8));
-  console.log(temp2);
-
-  const temp3 = cellIdToXY(isPlayer1 ? WHITE : BLACK, temp2);
-  console.log(temp3);
+  const pieceID = parseInt(pieceToSelect.id.substr(5));
 }
 
 /* reset the currently selected cell's tag, then set the currently selected cell to null */
-function resetSelection() {
+function resetSelection(cell) {
   console.log("resetting");
-  if (
-    alreadySelectedCell === null ||
-    alreadySelectedCell.childElementCount <= 0
-  )
-    return;
-  const piece = alreadySelectedCell.lastElementChild;
+  if (cell === null || cell.childElementCount <= 0) return;
+  const piece = cell.lastElementChild;
   piece.classList.toggle("selected");
   alreadySelectedCell = null;
+}
+
+/*check the conditions in which the game ends.*/
+/*if a player won, returns true. else returns false.*/
+function isVictory() {
+  return "Victory conditions not implemented yet";
 }
 
 //  return an array with the coordinates of the piece on the given board, according to its id
@@ -200,7 +260,6 @@ function pieceIdToXY(boardOwner, id) {
     default:
       boardToSearch = gameBoard;
   }
-  console.log(boardToSearch.getCoordinates(id));
   return boardToSearch.getCoordinates(id);
 }
 
@@ -210,4 +269,8 @@ function cellIdToXY(boardOwner, id) {
   if (boardOwner === FAILURE)
     return [Math.floor(fixedID / boardColumns), fixedID % boardRows]; //  if cell is on game board and not a player's board
   return [Math.floor(fixedID / playerColumns), fixedID % playerColumns];
+}
+
+function getActivePlayer() {
+  return isPlayer1 ? WHITE : BLACK;
 }

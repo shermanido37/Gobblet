@@ -54,7 +54,9 @@ class Board {
         for (let j = 0; j < this.board[0].length; j++) {
           this.board[i][j].push(
             new Piece(
-              i * (this.board.length - 1) + j,
+              i * (this.board.length - 1) +
+                j +
+                (player - WHITE) * playerRows * playerColumns,
               player,
               this.board.length - i
             )
@@ -80,24 +82,27 @@ class Board {
     this.board[x][y].push(piece);
   }
 
-  move(prevX, prevY, newX, newY) {
-    const piece = this.board[prevX][prevY].pop;
-    this.board[newX][newY].push(piece);
+  withdraw(x, y) {
+    const piece = this.board[x][y].pop();
+    return piece;
+  }
+
+  move(prevCoordinates, newCoordinates) {
+    const piece = this.withdraw(prevCoordinates[0], prevCoordinates[1]);
+    this.moveNew(newCoordinates[0], newCoordinates[1], piece);
   }
 
   //    checking if the move the player is trying to make is valid
-  isLegalMove(prevX, prevY, newX, newY) {
+  //    pieceToMove is the Piece object selected, placeToMove is an array of coordinates on the board
+  isLegalMove(pieceToMove, placeToMoveXY) {
     if (!this.isPlacable) return false; //  if trying to move a piece to an unplacable board, declare illegal move
-    if (this.board[prevX][prevY].isEmpty)
-      throw Exception("Trying to move empty piece");
-
-    let pieceToMove = this.board[prevX][prevY].peek;
-
-    if (this.board[newX][newY].isEmpty) return true;
+    if (pieceToMove === null) throw Exception("Trying to move empty piece");
+    const target = this.board[placeToMoveXY[0]][placeToMoveXY[1]];
+    if (target.isEmpty()) return true;
 
     //  here we know that the place we want to move is a currently existing piece
-    let placeToMove = this.board[newX][newY].peek;
-    if (pieceToMove.size <= placeToMove) return false;
+    let placeToMoveTop = target.peek();
+    if (pieceToMove.size <= placeToMoveTop.size) return false;
     return true;
   }
 
@@ -105,7 +110,11 @@ class Board {
   getCoordinates(pieceID) {
     for (let i = 0; i < this.board.length; i++) {
       for (let j = 0; j < this.board[0].length; j++) {
-        if (this.board[i][j].peek().id === pieceID) return [i, j];
+        if (
+          this.board[i][j].peek() != null &&
+          this.board[i][j].peek().id === pieceID
+        )
+          return [i, j];
       }
     }
     return [];
